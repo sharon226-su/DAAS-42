@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>年齡與憂鬱、焦慮、壓力的關係</title>
+<style>
+  :root{
+    --bg:#f7f2ec; --card:#fffdfa; --fg:#2b1d12; --muted:#7a6652; --line:#e0d2c2; --grid:#f0e6da;
+    --accent:#8b5a2b; --accent-fg:#ffffff; --tip-bg:#2b1d12; --tip-fg:#ffffff;
+    --s1:#5b3513; --s2:#a5672f; --s3:#c99560;
+    --l0:#f1e4d3; --l1:#dcc09a; --l2:#c19a6b; --l3:#8b5a2b; --l4:#4a2c14;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1a1512; --card:#231c17; --fg:#efe6dc; --muted:#b3a190; --line:#4a3d33; --grid:#342b24;
+      --accent:#c19a6b; --accent-fg:#1a1512; --tip-bg:#f1e6d8; --tip-fg:#2b1d12;
+      --s1:#a77547; --s2:#cf9c66; --s3:#ecd0ac;
+      --l4:#6b3f1c;
+    }
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+    line-height:1.6;
+  }
+  .page{max-width:980px; margin:0 auto; padding:28px 16px 56px}
+  h1{font-size:1.7rem; margin:0 0 8px; letter-spacing:.02em}
+  .lead{margin:0 0 22px; color:var(--muted)}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:18px 18px 20px; margin-bottom:18px}
+  h2{font-size:1.1rem; margin:0 0 4px}
+  .sub{margin:0 0 14px; color:var(--muted); font-size:.9rem}
+
+  .controls{display:flex; flex-wrap:wrap; gap:14px 28px; align-items:flex-start; margin-bottom:14px}
+  .seg{display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden}
+  .seg button{
+    font:inherit; font-size:.92rem; padding:8px 16px; border:0; background:transparent; color:var(--fg); cursor:pointer;
+  }
+  .seg button + button{border-left:1px solid var(--line)}
+  .seg button[aria-pressed="true"]{background:var(--accent); color:var(--accent-fg); font-weight:600}
+  .seg button:focus-visible, .opt input:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+  fieldset{border:0; margin:0; padding:0; min-width:0}
+  legend{font-size:.8rem; color:var(--muted); padding:0; margin-bottom:4px}
+  .opts{display:flex; flex-wrap:wrap; gap:6px 18px}
+  .opt{display:inline-flex; align-items:center; gap:6px; cursor:pointer; font-size:.95rem}
+  .opt input{margin:0; width:16px; height:16px; accent-color:var(--accent)}
+  .opt input:disabled + .swatch + span{opacity:.85}
+  .swatch{display:inline-block; width:12px; height:12px}
+  .swatch.circle{border-radius:50%}
+  .swatch.square{border-radius:2px}
+  .swatch.triangle{width:0; height:0; background:none !important; border-left:7px solid transparent; border-right:7px solid transparent; border-bottom:12px solid currentColor}
+
+  .legend{display:flex; flex-wrap:wrap; gap:4px 14px; font-size:.85rem; color:var(--muted); margin:0 0 8px}
+  .legend span{display:inline-flex; align-items:center; gap:5px}
+  .legend i{display:inline-block; width:14px; height:12px; border-radius:2px}
+
+  .chart-wrap{position:relative; width:100%}
+  svg{display:block; width:100%; height:auto; overflow:visible}
+  svg text{fill:var(--fg); font-family:inherit}
+  svg .muted{fill:var(--muted)}
+  .hit{fill:transparent; cursor:pointer}
+  .hit:hover{fill:rgba(128,128,128,.22)}
+  .seg-rect{cursor:pointer; transition:opacity .1s}
+  .seg-rect:hover{opacity:.78}
+  #tip{
+    position:absolute; pointer-events:none; z-index:5; display:none; max-width:240px;
+    background:var(--tip-bg); color:var(--tip-fg); padding:7px 10px; border-radius:6px; font-size:.85rem; line-height:1.5;
+    box-shadow:0 2px 10px rgba(0,0,0,.25);
+  }
+
+  .table-scroll{overflow-x:auto}
+  table{border-collapse:collapse; width:100%; font-size:.9rem; font-variant-numeric:tabular-nums}
+  caption{text-align:left; font-weight:600; padding:0 0 8px}
+  th,td{padding:7px 10px; border-bottom:1px solid var(--line); text-align:right; white-space:nowrap}
+  th:first-child, td:first-child, th.l, td.l{text-align:left}
+  thead th{background:var(--grid); font-weight:600}
+  tbody tr.grp td{background:var(--grid); font-weight:600; text-align:left}
+  th button.sort{font:inherit; font-weight:inherit; color:inherit; background:none; border:0; padding:0; cursor:pointer; display:inline-flex; align-items:center; gap:4px}
+  th button.sort:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+  th button.sort .arr{font-size:.7em; opacity:.45}
+  th button.sort.on .arr{opacity:1; color:var(--accent)}
+  caption .hint{font-weight:400; font-size:.82rem; color:var(--muted); margin-left:8px}
+  .dot{display:inline-block; width:10px; height:10px; margin-right:6px; vertical-align:baseline}
+  .dot.circle{border-radius:50%} .dot.square{border-radius:2px}
+  .dot.triangle{width:0;height:0;background:none !important;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:10px solid currentColor}
+
+  .notes h2{margin-bottom:8px}
+  .notes ul{margin:0; padding-left:1.2em}
+  .notes li{margin:0 0 6px; font-size:.92rem}
+  .notes li b{font-weight:600}
+  table.cut{width:auto; min-width:320px; font-size:.85rem}
+  table.cut th, table.cut td{text-align:center}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>年齡與憂鬱、焦慮、壓力的關係</h1>
+  <p class="lead">DASS-42 共 42 題，分為憂鬱、焦慮、壓力三個分量表（各 14 題），受試者針對每一題評定「過去一週內該描述符合自己的頻率」，1 分＝完全不符合、2 分＝部分或有時符合、3 分＝相當符合或大部分時間符合、4 分＝非常符合或幾乎總是符合；計分時每題減 1 轉為 0–3 分，再將同一分量表的 14 題相加，得到該分量表總分（範圍 0–42），分數越高代表症狀越嚴重，並依總分切點分為正常、輕度、中度、重度、極重度五個等級。</p>
+
+  <section class="card" aria-labelledby="chartTitle">
+    <div class="controls">
+      <fieldset>
+        <legend>圖表</legend>
+        <div class="seg" role="group" aria-label="圖表切換">
+          <button type="button" id="tabMean" aria-pressed="true">年齡對各分量的平均數</button>
+          <button type="button" id="tabSev" aria-pressed="false">各年齡層嚴重度分布</button>
+        </div>
+      </fieldset>
+      <fieldset id="subBox"></fieldset>
+    </div>
+    <h2 id="chartTitle"></h2>
+    <p class="sub" id="chartSub"></p>
+    <div class="legend" id="legend" hidden></div>
+    <div class="chart-wrap" id="chartWrap">
+      <div id="chart"></div>
+      <div id="tip" role="status"></div>
+    </div>
+  </section>
+
+  <section class="card" aria-label="統計表格">
+    <div class="table-scroll" id="tableBox"></div>
+  </section>
+
+  <section class="card notes" aria-labelledby="notesTitle">
+    <h2 id="notesTitle">註解</h2>
+    <ul>
+      <li><b>n（人數）</b>：該年齡組的有效樣本數。</li>
+      <li><b>平均數</b>：該年齡組在該分量表的總分平均（0–42），越高代表該面向症狀越明顯。</li>
+      <li><b>標準差</b>：組內個別分數與平均數的離散程度，反映個體差異大小，並非估計誤差；標準差大代表同一年齡組內分數落差大。</li>
+      <li><b>95% 信賴區間</b>：以平均數 ± t<sub>0.975, n−1</sub> × 標準差 ÷ √n 計算。可理解為「若以相同方式重複抽樣，約 95% 的區間會涵蓋母群平均」。人數越少區間越寬，估計越不穩定。</li>
+      <li><b>嚴重度分布</b>：各等級百分比 = 該等級人數 ÷ 該年齡組在該分量表的總人數，同一年齡組五個等級加總為 100%。等級依下表的分量表總分切點分類。
+        <div class="table-scroll" style="margin-top:8px">
+          <table class="cut">
+            <thead><tr><th>等級</th><th>憂鬱</th><th>焦慮</th><th>壓力</th></tr></thead>
+            <tbody>
+              <tr><td>正常</td><td>0–9</td><td>0–7</td><td>0–14</td></tr>
+              <tr><td>輕度</td><td>10–13</td><td>8–9</td><td>15–18</td></tr>
+              <tr><td>中度</td><td>14–20</td><td>10–14</td><td>19–25</td></tr>
+              <tr><td>重度</td><td>21–27</td><td>15–19</td><td>26–33</td></tr>
+              <tr><td>極重度</td><td>28 以上</td><td>20 以上</td><td>34 以上</td></tr>
+            </tbody>
+          </table>
+        </div></li>
+      <li><b>年齡組</b>：依原資料的年齡層分為七組；80–90 組無人，未納入。</li>
+      <li><b>注意事項</b>：(1) 資料來自自願參與的線上問卷，屬自選樣本，無法代表一般人口；(2) 各年齡組人數差異大，人數少的組別（如 60–69、70–79）區間寬、結果宜保守解讀；(3) 本頁為描述性統計，未做顯著性檢定，信賴區間重疊與否不能直接當作差異是否顯著的判斷；(4) 本資料為橫斷面，無法判斷年齡造成差異的原因（可能含世代、參與動機等因素）；(5) DASS 是症狀自評量表，不等同臨床診斷。</li>
+    </ul>
+  </section>
+</div>
+
+<script>
+/* ===== 原始資料（取自「DASS資料分析 - 年齡層分析.csv」）===== */
+const RAW = [{"age": "7-19", "n": 1421, "dep": {"m": 22.76213934, "sd": 12.03702045}, "anx": {"m": 18.30119634, "sd": 10.20656679}, "str": {"m": 22.66502463, "sd": 10.31082269}, "lv": {"dep": [252, 105, 260, 247, 557], "anx": [248, 86, 235, 219, 633], "str": [346, 160, 318, 344, 253]}}, {"age": "20-29", "n": 2176, "dep": {"m": 20.05009191, "sd": 11.88178438}, "anx": {"m": 15.37178309, "sd": 9.718905087}, "str": {"m": 20.57077206, "sd": 10.18683173}, "lv": {"dep": [506, 229, 430, 359, 652], "anx": [537, 170, 439, 341, 689], "str": [675, 276, 521, 434, 270]}}, {"age": "30-39", "n": 362, "dep": {"m": 17.44751381, "sd": 12.59968592}, "anx": {"m": 11.09944751, "sd": 9.054225669}, "str": {"m": 18.29834254, "sd": 10.67445484}, "lv": {"dep": [127, 38, 55, 43, 99], "anx": [163, 33, 68, 37, 61], "str": [149, 56, 55, 64, 38]}}, {"age": "40-49", "n": 120, "dep": {"m": 14.74166667, "sd": 12.31484438}, "anx": {"m": 9.516666667, "sd": 9.017241499}, "str": {"m": 17.18333333, "sd": 10.87050078}, "lv": {"dep": [52, 14, 19, 11, 24], "anx": [63, 12, 17, 9, 19], "str": [54, 17, 18, 16, 15]}}, {"age": "50-59", "n": 68, "dep": {"m": 14.23529412, "sd": 12.18405815}, "anx": {"m": 7.764705882, "sd": 8.199231211}, "str": {"m": 15.22058824, "sd": 10.46650035}, "lv": {"dep": [34, 6, 11, 6, 11], "anx": [42, 5, 8, 6, 7], "str": [39, 7, 11, 6, 5]}}, {"age": "60-69", "n": 25, "dep": {"m": 14.52, "sd": 14.71994112}, "anx": {"m": 9.0, "sd": 9.746794345}, "str": {"m": 14.44, "sd": 10.89755324}, "lv": {"dep": [14, 2, 2, 1, 6], "anx": [15, 1, 3, 1, 5], "str": [14, 4, 3, 2, 2]}}, {"age": "70-79", "n": 3, "dep": {"m": 25.66666667, "sd": 17.89785834}, "anx": {"m": 8.666666667, "sd": 10.69267662}, "str": {"m": 21.0, "sd": 15.62049935}, "lv": {"dep": [1, 0, 0, 0, 2], "anx": [2, 0, 0, 0, 1], "str": [1, 0, 0, 2, 0]}}, {"age": "80-90", "n": 0, "dep": {"m": null, "sd": null}, "anx": {"m": null, "sd": null}, "str": {"m": null, "sd": null}, "lv": {"dep": [0, 0, 0, 0, 0], "anx": [0, 0, 0, 0, 0], "str": [0, 0, 0, 0, 0]}}];
+
+/* ===== 設定 ===== */
+// 年齡組設定；src 為原始資料中的年齡層名稱（可合併多個原始年齡層）
+const GROUPS = [
+  {label:'7–19',  src:['7-19']},
+  {label:'20–29', src:['20-29']},
+  {label:'30–39', src:['30-39']},
+  {label:'40–49', src:['40-49']},
+  {label:'50–59', src:['50-59']},
+  {label:'60–69', src:['60-69']},
+  {label:'70–79', src:['70-79']}
+];
+const SUBS = [
+  {key:'dep', name:'憂鬱', color:'var(--s1)', shape:'circle'},
+  {key:'anx', name:'焦慮', color:'var(--s2)', shape:'square'},
+  {key:'str', name:'壓力', color:'var(--s3)', shape:'triangle'}
+];
+const LEVELS = ['正常','輕度','中度','重度','極重度'];
+const LCOL   = ['var(--l0)','var(--l1)','var(--l2)','var(--l3)','var(--l4)'];
+const LTXT   = ['#1f2328','#1f2328','#1f2328','#ffffff','#ffffff'];
+const YMAX = 42;
+
+/* ===== 統計計算 ===== */
+function tCrit(df){ // 雙尾 95% 的 t 臨界值
+  const small = {1:12.706, 2:4.303, 3:3.182, 4:2.776};
+  if (df < 1) return NaN;
+  if (small[df]) return small[df];
+  const z = 1.959964;
+  return z + (Math.pow(z,3)+z)/(4*df)
+           + (5*Math.pow(z,5)+16*Math.pow(z,3)+3*z)/(96*df*df)
+           + (3*Math.pow(z,7)+19*Math.pow(z,5)+17*Math.pow(z,3)-15*z)/(384*Math.pow(df,3));
+}
+function pool(rows, key){ // 由各組 n、平均、標準差合併
+  const rs = rows.filter(r => r.n > 0);
+  const N = rs.reduce((a,r)=>a+r.n,0);
+  if (N === 0) return {mean:NaN, sd:NaN};
+  const M = rs.reduce((a,r)=>a+r.n*r[key].m,0)/N;
+  if (N < 2) return {mean:M, sd:NaN};
+  const SS = rs.reduce((a,r)=>a+(r.n-1)*Math.pow(r[key].sd,2)+r.n*Math.pow(r[key].m-M,2),0);
+  return {mean:M, sd:Math.sqrt(SS/(N-1))};
+}
+const STATS = GROUPS.map(g => {
+  const rows = g.src.map(a => RAW.find(r => r.age === a)).filter(Boolean);
+  const n = rows.reduce((a,r)=>a+r.n,0);
+  const o = {label:g.label, n, sub:{}, lv:{}};
+  SUBS.forEach(s => {
+    const p = pool(rows, s.key);
+    const se = p.sd/Math.sqrt(n);
+    const h = tCrit(n-1)*se;
+    o.sub[s.key] = {mean:p.mean, sd:p.sd, lo:p.mean-h, hi:p.mean+h};
+    o.lv[s.key] = LEVELS.map((_,i)=>rows.reduce((a,r)=>a+r.lv[s.key][i],0));
+    const tot = o.lv[s.key].reduce((a,b)=>a+b,0);
+    if (tot !== n) console.warn('等級人數合計與 n 不符：', g.label, s.name, tot, n);
+  });
+  return o;
+});
+
+/* ===== 狀態 ===== */
+const state = {mode:'mean', checked:new Set(['dep','anx','str']), sev:'dep', sort:{col:null, dir:'asc'}};
+
+/* ===== 工具 ===== */
+const $ = id => document.getElementById(id);
+const f2 = x => x.toFixed(2);
+const f1 = x => x.toFixed(1);
+const num = x => x.toLocaleString('en-US');
+const NS = 'http://www.w3.org/2000/svg';
+const subOf = k => SUBS.find(s => s.key === k);
+const clamp = (v,a,b) => Math.min(b, Math.max(a, v));
+
+function markerSvg(shape, x, y, r, color){
+  if (shape === 'circle') return `<circle cx="${x}" cy="${y}" r="${r}" fill="${color}" stroke="var(--card)" stroke-width="1.5"/>`;
+  if (shape === 'square') return `<rect x="${x-r}" y="${y-r}" width="${2*r}" height="${2*r}" rx="1.5" fill="${color}" stroke="var(--card)" stroke-width="1.5"/>`;
+  const pts = [[x,y-r-1],[x-r-1,y+r],[x+r+1,y+r]].map(p=>p.join(',')).join(' ');
+  return `<polygon points="${pts}" fill="${color}" stroke="var(--card)" stroke-width="1.5"/>`;
+}
+function swatch(s, cls){
+  return `<span class="${cls} ${s.shape}" style="background:${s.color};color:${s.color}"></span>`;
+}
+
+/* ===== 控制項 ===== */
+function renderControls(){
+  const box = $('subBox');
+  if (state.mode === 'mean'){
+    const only = state.checked.size === 1;
+    box.innerHTML = `<legend>分量表（可複選，至少保留一個）</legend><div class="opts">` +
+      SUBS.map(s => {
+        const on = state.checked.has(s.key);
+        return `<label class="opt"><input type="checkbox" data-k="${s.key}" ${on?'checked':''} ${on&&only?'disabled':''}>${swatch(s,'swatch')}<span>${s.name}</span></label>`;
+      }).join('') + `</div>`;
+    box.querySelectorAll('input').forEach(el => el.addEventListener('change', e => {
+      const k = e.target.dataset.k;
+      if (e.target.checked) state.checked.add(k);
+      else if (state.checked.size > 1) state.checked.delete(k);
+      renderAll();
+    }));
+  } else {
+    box.innerHTML = `<legend>分量表（單選）</legend><div class="opts">` +
+      SUBS.map(s => `<label class="opt"><input type="radio" name="sev" data-k="${s.key}" ${state.sev===s.key?'checked':''}><span>${s.name}</span></label>`).join('') + `</div>`;
+    box.querySelectorAll('input').forEach(el => el.addEventListener('change', e => {
+      state.sev = e.target.dataset.k; renderAll();
+    }));
+  }
+}
+
+/* ===== 標籤輔助 ===== */
+function axisLabel(g, x, y, anchor, twoLine){
+  const a = `text-anchor="${anchor}"`;
+  if (twoLine) return `<text x="${x}" y="${y}" ${a} font-size="12.5"><tspan x="${x}">${g.label}</tspan><tspan x="${x}" dy="1.25em" class="muted">（n=${num(g.n)}）</tspan></text>`;
+  return `<text x="${x}" y="${y}" ${a} font-size="12.5">${g.label}<tspan class="muted">（n=${num(g.n)}）</tspan></text>`;
+}
+
+/* ===== 圖表一：折線圖 ===== */
+function renderMeanChart(){
+  const W = Math.max(300, $('chartWrap').clientWidth);
+  const narrow = W < 560;
+  const H = narrow ? 360 : 420;
+  const m = {t:14, r:18, b:narrow?84:70, l:50};
+  const iw = W-m.l-m.r, ih = H-m.t-m.b;
+  const slot = iw / STATS.length;
+  const twoLine = slot < 150;
+  const X = i => m.l + slot*(i+0.5);
+  const Y = v => m.t + ih*(1 - v/YMAX);
+  const sel = SUBS.filter(s => state.checked.has(s.key));
+  let h = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="各年齡組憂鬱、焦慮、壓力平均分數折線圖">`;
+
+  for (let v=0; v<=YMAX; v+=6){
+    h += `<line x1="${m.l}" x2="${W-m.r}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--grid)"/>`;
+    h += `<text x="${m.l-8}" y="${Y(v)+4}" text-anchor="end" font-size="12" class="muted">${v}</text>`;
+  }
+  h += `<line x1="${m.l}" x2="${m.l}" y1="${m.t}" y2="${m.t+ih}" stroke="var(--line)"/>`;
+  h += `<line x1="${m.l}" x2="${W-m.r}" y1="${m.t+ih}" y2="${m.t+ih}" stroke="var(--line)"/>`;
+  h += `<text transform="translate(13 ${m.t+ih/2}) rotate(-90)" text-anchor="middle" font-size="12.5" class="muted">分量表總分（0–${YMAX}）</text>`;
+  STATS.forEach((g,i) => { h += axisLabel(g, X(i), m.t+ih+20, 'middle', twoLine); });
+  h += `<text x="${m.l+iw/2}" y="${H-6}" text-anchor="middle" font-size="12.5" class="muted">年齡組</text>`;
+
+  const dodge = Math.min(10, slot/8);
+  let lines='', bars='', pts='', hits='';
+  sel.forEach((s,si) => {
+    const off = (si-(sel.length-1)/2)*dodge*2;
+    let d = '';
+    STATS.forEach((g,i) => {
+      const st = g.sub[s.key];
+      if (!isFinite(st.mean)) return;
+      const x = X(i)+off, y = Y(st.mean);
+      d += (d?'L':'M') + x.toFixed(1)+' '+y.toFixed(1);
+      const yl = Y(clamp(st.lo,0,YMAX)), yh = Y(clamp(st.hi,0,YMAX));
+      bars += `<g stroke="${s.color}" stroke-width="1.6"><line x1="${x}" x2="${x}" y1="${yl}" y2="${yh}"/><line x1="${x-4}" x2="${x+4}" y1="${yl}" y2="${yl}"/><line x1="${x-4}" x2="${x+4}" y1="${yh}" y2="${yh}"/></g>`;
+      pts  += markerSvg(s.shape, x, y, 5, s.color);
+      const tip = `<b>${s.name}</b>（${g.label}）<br>平均數：${f2(st.mean)}<br>標準差：${f2(st.sd)}`;
+      hits += `<circle class="hit" cx="${x}" cy="${y}" r="13" data-tip="${tip.replace(/"/g,'&quot;')}"/>`;
+    });
+    lines += `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2.2" stroke-linejoin="round"/>`;
+  });
+  h += lines + bars + pts + hits + `</svg>`;
+  $('chart').innerHTML = h;
+}
+
+/* ===== 圖表二：橫向堆疊長條圖 ===== */
+function renderSevChart(){
+  const W = Math.max(300, $('chartWrap').clientWidth);
+  const narrow = W < 560;
+  const barH = 38, gap = 16;
+  const m = {t:8, r:16, b:46, l:narrow?86:142};
+  const ih = STATS.length*(barH+gap) - gap;
+  const H = m.t + ih + m.b;
+  const iw = W-m.l-m.r;
+  const X = p => m.l + iw*p/100;
+  const sk = state.sev, sname = subOf(sk).name;
+  let h = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="各年齡組${sname}嚴重度分布堆疊長條圖">`;
+
+  for (let p=0; p<=100; p+=20){
+    h += `<line x1="${X(p)}" x2="${X(p)}" y1="${m.t}" y2="${m.t+ih}" stroke="var(--grid)"/>`;
+    h += `<text x="${X(p)}" y="${m.t+ih+18}" text-anchor="middle" font-size="12" class="muted">${p}%</text>`;
+  }
+  h += `<text x="${m.l+iw/2}" y="${H-6}" text-anchor="middle" font-size="12.5" class="muted">各嚴重度等級占該年齡組的百分比</text>`;
+
+  STATS.forEach((g,i) => {
+    const y = m.t + i*(barH+gap);
+    h += axisLabel(g, m.l-8, y+barH/2+(narrow?-2:4), 'end', narrow);
+    const cnt = g.lv[sk], tot = g.n;
+    let acc = 0;
+    cnt.forEach((c,li) => {
+      if (tot === 0) return;
+      const p = c/tot*100, x0 = X(acc), w = X(acc+p)-x0;
+      acc += p;
+      if (c === 0) return;
+      const tip = `<b>${LEVELS[li]}</b>：${f1(p)}%<br>${sname}・${g.label}`;
+      h += `<rect class="seg-rect" x="${x0}" y="${y}" width="${w}" height="${barH}" fill="${LCOL[li]}" stroke="var(--card)" stroke-width="1" data-tip="${tip.replace(/"/g,'&quot;')}"/>`;
+      if (w >= 38) h += `<text x="${x0+w/2}" y="${y+barH/2+4}" text-anchor="middle" font-size="12" style="fill:${LTXT[li]};pointer-events:none">${f1(p)}%</text>`;
+    });
+  });
+  h += `</svg>`;
+  $('chart').innerHTML = h;
+}
+
+/* ===== 表格 ===== */
+function renderTable(){
+  let h = '';
+  if (state.mode === 'mean'){
+    h += `<table><caption>各年齡組分量表總分統計（0–${YMAX}）</caption><thead><tr><th>分量表</th><th class="l">年齡組</th><th>n</th><th>平均數</th><th>標準差</th><th>95% CI 下限</th><th>95% CI 上限</th></tr></thead><tbody>`;
+    SUBS.filter(s => state.checked.has(s.key)).forEach(s => {
+      STATS.forEach((g,i) => {
+        const st = g.sub[s.key];
+        h += `<tr><td class="l">${i===0 ? swatch(s,'dot')+s.name : ''}</td><td class="l">${g.label}</td><td>${num(g.n)}</td><td>${f2(st.mean)}</td><td>${f2(st.sd)}</td><td>${f2(st.lo)}</td><td>${f2(st.hi)}</td></tr>`;
+      });
+    });
+    h += `</tbody></table>`;
+  } else {
+    const sk = state.sev, sname = subOf(sk).name, so = state.sort;
+    const idx = STATS.map((g,i) => i);
+    if (so.col !== null){
+      const val = i => {
+        const g = STATS[i];
+        if (so.col === 'age') return i;
+        if (so.col === 'n') return g.n;
+        return g.n ? g.lv[sk][so.col]/g.n : 0; // 等級欄依百分比排序
+      };
+      idx.sort((a,b) => (val(a)-val(b)) * (so.dir==='asc' ? 1 : -1) || a-b);
+    }
+    const th = (col, label) => {
+      const on = so.col === col;
+      const arr = on ? (so.dir==='asc' ? '▲' : '▼') : '↕';
+      const aria = on ? (so.dir==='asc' ? 'ascending' : 'descending') : 'none';
+      return `<th aria-sort="${aria}"><button type="button" class="sort${on?' on':''}" data-sort="${col}" title="點選排序">${label}<span class="arr">${arr}</span></button></th>`;
+    };
+    h += `<table><caption>${sname}：各年齡組嚴重度人數與百分比<span class="hint">點選欄位標題可排序（等級欄依百分比）</span></caption><thead><tr>${th('age','年齡組')}${th('n','n')}${LEVELS.map((l,i)=>th(i,l)).join('')}</tr></thead><tbody>`;
+    idx.forEach(i => {
+      const g = STATS[i];
+      h += `<tr><td>${g.label}</td><td>${num(g.n)}</td>` + g.lv[sk].map(c => `<td>${num(c)}（${f1(c/g.n*100)}%）</td>`).join('') + `</tr>`;
+    });
+    h += `</tbody></table>`;
+  }
+  $('tableBox').innerHTML = h;
+  $('tableBox').querySelectorAll('[data-sort]').forEach(btn => btn.addEventListener('click', () => {
+    const raw = btn.dataset.sort, col = (raw === 'age' || raw === 'n') ? raw : Number(raw);
+    const so = state.sort;
+    if (so.col === col){
+      if (so.dir === 'asc') so.dir = 'desc'; else { so.col = null; so.dir = 'asc'; }
+    } else { so.col = col; so.dir = 'asc'; }
+    renderTable();
+  }));
+}
+
+/* ===== 標題、圖例、總渲染 ===== */
+function renderHead(){
+  const lg = $('legend');
+  if (state.mode === 'mean'){
+    $('chartTitle').textContent = '年齡對各分量表的平均分數';
+    $('chartSub').textContent = '誤差線為 95% 信賴區間；滑鼠移到點上可查看平均數與標準差。';
+    lg.hidden = true;
+  } else {
+    $('chartTitle').textContent = subOf(state.sev).name + '：各年齡層嚴重度分布';
+    $('chartSub').textContent = '滑鼠移到區段上可查看等級與百分比。';
+    lg.hidden = false;
+    lg.innerHTML = LEVELS.map((l,i)=>`<span><i style="background:${LCOL[i]}"></i>${l}</span>`).join('');
+  }
+}
+function renderChart(){ hideTip(); state.mode === 'mean' ? renderMeanChart() : renderSevChart(); }
+function renderAll(){
+  $('tabMean').setAttribute('aria-pressed', state.mode==='mean');
+  $('tabSev').setAttribute('aria-pressed', state.mode==='sev');
+  renderControls(); renderHead(); renderChart(); renderTable();
+}
+
+/* ===== 提示框 ===== */
+const tip = $('tip'), wrap = $('chartWrap');
+function hideTip(){ tip.style.display = 'none'; }
+function showTip(html, e){
+  tip.innerHTML = html;
+  tip.style.display = 'block';
+  const r = wrap.getBoundingClientRect();
+  let x = e.clientX - r.left + 14, y = e.clientY - r.top + 14;
+  if (x + tip.offsetWidth > r.width) x = e.clientX - r.left - tip.offsetWidth - 14;
+  if (y + tip.offsetHeight > r.height + 40) y = e.clientY - r.top - tip.offsetHeight - 14;
+  tip.style.left = Math.max(0,x) + 'px';
+  tip.style.top  = Math.max(0,y) + 'px';
+}
+function onPointer(e){
+  const t = e.target.closest('[data-tip]');
+  if (t) showTip(t.dataset.tip, e); else hideTip();
+}
+wrap.addEventListener('pointermove', onPointer);
+wrap.addEventListener('pointerdown', onPointer);
+wrap.addEventListener('pointerleave', hideTip);
+
+/* ===== 事件 ===== */
+$('tabMean').addEventListener('click', () => { state.mode = 'mean'; renderAll(); });
+$('tabSev').addEventListener('click',  () => { state.mode = 'sev';  renderAll(); });
+let lastW = 0;
+new ResizeObserver(() => {
+  const w = wrap.clientWidth;
+  if (w !== lastW){ lastW = w; renderChart(); }
+}).observe(wrap);
+
+renderAll();
+</script>
+</body>
+</html>
