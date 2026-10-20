@@ -14,10 +14,9 @@
   }
   .conn button:disabled{opacity:.6; cursor:wait}
   .conn button:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
-  #connResult{margin:12px 0 0; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:var(--grid); font-size:.9rem; white-space:pre-wrap; word-break:break-word}
-  #connResult[hidden]{display:none}
-  #connResult.err{border-color:var(--accent)}
-  #connResult code{font-family:ui-monospace,Menlo,Consolas,monospace}
+  #connResult, #geminiResult{margin:12px 0 0; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:var(--grid); font-size:.9rem; white-space:pre-wrap; word-break:break-word}
+  #connResult[hidden], #geminiResult[hidden]{display:none}
+  #connResult.err, #geminiResult.err{border-color:var(--accent)}
 </style>
 </head>
 <body>
@@ -40,6 +39,13 @@
     <button type="button" id="connBtn">測試連線</button>
     <div id="connResult" role="status" aria-live="polite" hidden></div>
   </section>
+
+  <section class="card conn" aria-labelledby="geminiTitle">
+    <h2 id="geminiTitle">測試 Gemini</h2>
+    <p class="sub">向後端送出固定問題「請用一句話自我介紹」，並顯示 Gemini 的回覆。</p>
+    <button type="button" id="geminiBtn">測試 Gemini</button>
+    <div id="geminiResult" role="status" aria-live="polite" hidden></div>
+  </section>
 </main>
 <footer class="site-footer">
   <div class="wrap">
@@ -49,6 +55,23 @@
 </footer>
 <script>
 const API_URL = 'https://dass-42.sharon6966188.workers.dev/';
+
+// 對後端送出 POST（JSON），回傳狀態與解析後的內容
+async function callApi(payload) {
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  const raw = await res.text();
+  let data = null;
+  try { data = JSON.parse(raw); } catch (e) { /* 回應不是 JSON */ }
+  return { res, raw, data };
+}
+
+const NETWORK_ERROR = '連線失敗：無法連到後端。請確認網路連線、後端網址是否正確，以及後端是否已部署並允許此網站呼叫（CORS）。';
+
+// ===== 測試連線 =====
 const btn = document.getElementById('connBtn');
 const out = document.getElementById('connResult');
 
@@ -62,15 +85,7 @@ btn.addEventListener('click', async () => {
   btn.disabled = true;
   show('連線中…', false);
   try {
-    const res = await fetch(API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'test' })
-    });
-    const raw = await res.text();
-    let data = null;
-    try { data = JSON.parse(raw); } catch (e) { /* 回應不是 JSON */ }
-
+    const { res, raw, data } = await callApi({ action: 'test' });
     if (res.ok) {
       show('連線成功（狀態碼 ' + res.status + '）\n回應：' + (data !== null ? JSON.stringify(data) : raw), false);
     } else {
@@ -78,9 +93,37 @@ btn.addEventListener('click', async () => {
       show('連線失敗（狀態碼 ' + res.status + '）\n錯誤訊息：' + msg, true);
     }
   } catch (err) {
-    show('連線失敗：無法連到後端。請確認網路連線、後端網址是否正確，以及後端是否已部署並允許此網站呼叫（CORS）。\n（' + err.message + '）', true);
+    show(NETWORK_ERROR + '\n（' + err.message + '）', true);
   } finally {
     btn.disabled = false;
+  }
+});
+
+// ===== 測試 Gemini =====
+const gBtn = document.getElementById('geminiBtn');
+const gOut = document.getElementById('geminiResult');
+
+function gShow(text, isError) {
+  gOut.textContent = text;
+  gOut.className = isError ? 'err' : '';
+  gOut.hidden = false;
+}
+
+gBtn.addEventListener('click', async () => {
+  gBtn.disabled = true;
+  gShow('等待 Gemini 回覆中…', false);
+  try {
+    const { res, raw, data } = await callApi({ action: 'ask', question: '請用一句話自我介紹' });
+    if (res.ok && data && typeof data.answer === 'string') {
+      gShow(data.answer, false);
+    } else {
+      const msg = (data && data.error) ? data.error : (raw || '沒有回應內容');
+      gShow('呼叫失敗（狀態碼 ' + res.status + '）\n錯誤訊息：' + msg, true);
+    }
+  } catch (err) {
+    gShow(NETWORK_ERROR + '\n（' + err.message + '）', true);
+  } finally {
+    gBtn.disabled = false;
   }
 });
 </script>
