@@ -14,9 +14,13 @@
   }
   .conn button:disabled{opacity:.6; cursor:wait}
   .conn button:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
-  #connResult, #geminiResult{margin:12px 0 0; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:var(--grid); font-size:.9rem; white-space:pre-wrap; word-break:break-word}
-  #connResult[hidden], #geminiResult[hidden]{display:none}
-  #connResult.err, #geminiResult.err{border-color:var(--accent)}
+  #connResult, #geminiResult, #qaResult{margin:12px 0 0; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:var(--grid); font-size:.9rem; white-space:pre-wrap; word-break:break-word}
+  #connResult[hidden], #geminiResult[hidden], #qaResult[hidden]{display:none}
+  #connResult.err, #geminiResult.err, #qaResult.err{border-color:var(--accent)}
+  .qa-label{display:block; font-size:.8rem; color:var(--muted); margin-bottom:4px}
+  .qa-row{display:flex; gap:10px; flex-wrap:wrap}
+  .qa-row input{flex:1 1 240px; min-width:0; font:inherit; font-size:.95rem; padding:8px 12px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--fg)}
+  .qa-row input:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
 </style>
 </head>
 <body>
@@ -28,10 +32,17 @@
 </header>
 <main class="page">
   <h1>問答</h1>
-  <section class="card soon" aria-labelledby="soonTitle">
-    <span class="badge">即將推出</span>
-    <h2 id="soonTitle">問答功能準備中</h2>
-    <p>此區塊將於日後開放，敬請期待。</p>
+  <section class="card conn qa" aria-labelledby="qaTitle">
+    <h2 id="qaTitle">提問</h2>
+    <p class="sub">回答只根據研究的摘要表；摘要表沒有的內容會直接說沒有。</p>
+    <form id="qaForm">
+      <label class="qa-label" for="qaInput">請輸入問題</label>
+      <div class="qa-row">
+        <input type="text" id="qaInput" maxlength="500" autocomplete="off" placeholder="例如：20–29 歲的憂鬱平均是多少？" required>
+        <button type="submit" id="qaBtn">送出</button>
+      </div>
+    </form>
+    <div id="qaResult" role="status" aria-live="polite" hidden></div>
   </section>
   <section class="card conn" aria-labelledby="connTitle">
     <h2 id="connTitle">測試連線</h2>
@@ -124,6 +135,45 @@ gBtn.addEventListener('click', async () => {
     gShow(NETWORK_ERROR + '\n（' + err.message + '）', true);
   } finally {
     gBtn.disabled = false;
+  }
+});
+
+// ===== 問答 =====
+const qaForm = document.getElementById('qaForm');
+const qaInput = document.getElementById('qaInput');
+const qaBtn = document.getElementById('qaBtn');
+const qaOut = document.getElementById('qaResult');
+
+function qaShow(text, isError) {
+  qaOut.textContent = text;
+  qaOut.className = isError ? 'err' : '';
+  qaOut.hidden = false;
+}
+
+qaForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const question = qaInput.value.trim();
+  if (question === '') {
+    qaShow('請先輸入問題。', true);
+    return;
+  }
+  qaBtn.disabled = true;
+  qaInput.disabled = true;
+  qaShow('回答中…', false);
+  try {
+    const { res, raw, data } = await callApi({ action: 'ask', question });
+    if (res.ok && data && typeof data.answer === 'string') {
+      qaShow(data.answer, false);
+    } else {
+      const msg = (data && data.error) ? data.error : (raw || '沒有回應內容');
+      qaShow('回答失敗（狀態碼 ' + res.status + '）\n錯誤訊息：' + msg, true);
+    }
+  } catch (err) {
+    qaShow(NETWORK_ERROR + '\n（' + err.message + '）', true);
+  } finally {
+    qaBtn.disabled = false;
+    qaInput.disabled = false;
+    qaInput.focus();
   }
 });
 </script>
