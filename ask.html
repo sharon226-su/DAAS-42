@@ -5,6 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>問答｜年齡與憂鬱、焦慮、壓力的關係</title>
 <link rel="stylesheet" href="style.css">
+<style>
+  .conn h2{margin:0 0 4px}
+  .conn .sub{margin:0 0 12px}
+  .conn button{
+    font:inherit; font-size:.92rem; font-weight:600; padding:8px 18px; border:0; border-radius:8px;
+    background:var(--accent); color:var(--accent-fg); cursor:pointer;
+  }
+  .conn button:disabled{opacity:.6; cursor:wait}
+  .conn button:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+  #connResult{margin:12px 0 0; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:var(--grid); font-size:.9rem; white-space:pre-wrap; word-break:break-word}
+  #connResult[hidden]{display:none}
+  #connResult.err{border-color:var(--accent)}
+  #connResult code{font-family:ui-monospace,Menlo,Consolas,monospace}
+</style>
 </head>
 <body>
 <header class="site-header">
@@ -20,6 +34,12 @@
     <h2 id="soonTitle">問答功能準備中</h2>
     <p>此區塊將於日後開放，敬請期待。</p>
   </section>
+  <section class="card conn" aria-labelledby="connTitle">
+    <h2 id="connTitle">測試連線</h2>
+    <p class="sub">向後端送出 action 為 test 的 POST 請求，並顯示回應。</p>
+    <button type="button" id="connBtn">測試連線</button>
+    <div id="connResult" role="status" aria-live="polite" hidden></div>
+  </section>
 </main>
 <footer class="site-footer">
   <div class="wrap">
@@ -27,5 +47,42 @@
     <span>組員：〔請填入組員姓名〕</span>
   </div>
 </footer>
+<script>
+const API_URL = 'https://dass-42.sharon6966188.workers.dev/';
+const btn = document.getElementById('connBtn');
+const out = document.getElementById('connResult');
+
+function show(text, isError) {
+  out.textContent = text;
+  out.className = isError ? 'err' : '';
+  out.hidden = false;
+}
+
+btn.addEventListener('click', async () => {
+  btn.disabled = true;
+  show('連線中…', false);
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'test' })
+    });
+    const raw = await res.text();
+    let data = null;
+    try { data = JSON.parse(raw); } catch (e) { /* 回應不是 JSON */ }
+
+    if (res.ok) {
+      show('連線成功（狀態碼 ' + res.status + '）\n回應：' + (data !== null ? JSON.stringify(data) : raw), false);
+    } else {
+      const msg = (data && data.error) ? data.error : (raw || '沒有回應內容');
+      show('連線失敗（狀態碼 ' + res.status + '）\n錯誤訊息：' + msg, true);
+    }
+  } catch (err) {
+    show('連線失敗：無法連到後端。請確認網路連線、後端網址是否正確，以及後端是否已部署並允許此網站呼叫（CORS）。\n（' + err.message + '）', true);
+  } finally {
+    btn.disabled = false;
+  }
+});
+</script>
 </body>
 </html>
